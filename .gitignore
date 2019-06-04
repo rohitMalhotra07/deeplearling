@@ -5,3 +5,4 @@ _vizdoom.ini
 .DS_Store
 pretrained/*
 dumped/*
+.idea/

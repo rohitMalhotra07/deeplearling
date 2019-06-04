@@ -174,6 +174,32 @@ def _a3c_flow(game,params):
 
 	#### save shared model time to time ######
 
+	def save_task(shared_m):
+		import sched, time
+		s = sched.scheduler(time.time, time.sleep)
+
+		def save_model(sm,n_iter):#sm is shared model
+			print("Saving Model...")
+			# do your stuff
+			model_name = 'periodic-%i.pth' % (n_iter)
+			model_path = os.path.join(params.dump_path, model_name)
+			logger.info('Periodic dump: %s' % model_path)
+			torch.save(sm.state_dict(), model_path)
+
+			n_iter+=1
+			s.enter(60, 1, save_model, (sm,n_iter))
+
+
+		s.enter(60, 1, save_model, (shared_m,1))
+		s.run()
+
+	p = mp.Process(target=save_task, args=(shared_model,))
+	p.start()
+	processes.append(p)
+
+
+	##########################################
+
 
 	for rank in range(0,params2.num_processes):  # making a loop to run all the other processes that will be trained by updating the shared model
 		action_builder_temp = ActionBuilder(params)
