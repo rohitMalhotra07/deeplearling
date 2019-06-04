@@ -3,3 +3,5 @@ __pycache__/
 *.py[cod]
 _vizdoom.ini
 .DS_Store
+pretrained/*
+dumped/*
