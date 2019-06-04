@@ -1,0 +1,70 @@
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - ========== Running DOOM ==========
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - Experiment will be saved in: /Users/rohitmalhotra/Desktop/RUG/Semester1d/deeplearning/practise/drl/Arnold/dumped/test/tj58pwe6oa
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - final_decay: 0.1
+                                             action_combinations: turn_lr+attack
+                                             dump_path: /Users/rohitmalhotra/Desktop/RUG/Semester1d/deeplearning/practise/drl/Arnold/dumped/test/tj58pwe6oa
+                                             use_continuous: False
+                                             gpu_id: -1
+                                             render_weapon: True
+                                             height: 60
+                                             use_screen_buffer: True
+                                             players_per_game: 1
+                                             update_frequency: 4
+                                             frame_skip: 2
+                                             dueling_network: False
+                                             variable_dim: [32, 32]
+                                             crouch: off
+                                             speed: off
+                                             freedoom: True
+                                             visualize: True
+                                             use_depth_buffer: False
+                                             human_player: False
+                                             game_variables: [('health', 101), ('sel_ammo', 301)]
+                                             render_crosshair: True
+                                             use_bn: False
+                                             episode_time: 120
+                                             freelook: False
+                                             map_ids_test: [1]
+                                             width: 108
+                                             clip_delta: 1.0
+                                             log_frequency: 100
+                                             eval_episodes: 20
+                                             n_variables: 2
+                                             bucket_size: [1, 1]
+                                             optimizer: rmsprop,lr=0.0002
+                                             hist_size: 4
+                                             evaluate: 1
+                                             dropout: 0.0
+                                             labels_mapping: 
+                                             manual_control: False
+                                             batch_size: 32
+                                             start_decay: 0
+                                             game_features: 
+                                             dump_freq: 0
+                                             map_ids_train: [1]
+                                             gray: False
+                                             n_fm: 3
+                                             render_hud: False
+                                             eval_freq: 30000
+                                             scenario: defend_the_center
+                                             recurrence: 
+                                             replay_memory_size: 1000000
+                                             reload: /Users/rohitmalhotra/Desktop/RUG/Semester1d/deeplearning/practise/drl/Arnold/pretrained/defend_the_center.pth
+                                             player_rank: 0
+                                             hidden_dim: 512
+                                             n_features: 0
+                                             network_type: dqn_ff
+                                             gamma: 0.99
+                                             stop_decay: 1000000
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - 9 available buttons: ['MOVE_FORWARD', 'MOVE_BACKWARD', 'TURN_LEFT', 'TURN_RIGHT', 'MOVE_LEFT', 'MOVE_RIGHT', 'ATTACK', 'SPEED', 'CROUCH']
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - 3 available actions:
+                                             ['TURN_LEFT']
+                                             ['TURN_RIGHT']
+                                             ['ATTACK']
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - Reward values:
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - {'INJURED': -1.0, 'DISTANCE': 0.0, 'MEDIKIT': 1.0, 'DEATH': -5.0, 'ARMOR': 1.0, 'WEAPON': 1.0, 'BASE_REWARD': 0.0, 'SUICIDE': -5.0, 'KILL': 5.0, 'USE_AMMO': -0.2, 'AMMO': 1.0}
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - Input shape: (3, 60, 108)
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - Conv layer output dim : 4608
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - Hidden layer input dim: 4672
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - Reloading model from /Users/rohitmalhotra/Desktop/RUG/Semester1d/deeplearning/practise/drl/Arnold/pretrained/defend_the_center.pth...
+INFO [28176] - 05/27/19 15:48:58 - 0:00:00 - Evaluating the model...
