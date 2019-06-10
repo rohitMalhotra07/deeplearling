@@ -202,10 +202,10 @@ def _a3c_flow(game,params):
 			torch.save(sm.state_dict(), model_path)
 
 			n_iter+=1
-			s.enter(600, 1, save_model, (sm,n_iter))
+			s.enter(3600, 1, save_model, (sm,n_iter))
 
 
-		s.enter(600, 1, save_model, (shared_m,1))
+		s.enter(3600, 1, save_model, (shared_m,1))
 		s.run()
 
 	p = mp.Process(target=save_task, args=(shared_model,))
@@ -344,6 +344,7 @@ def evaluate_deathmatch_a3c(eval_model,game, params,num_iterations=None):
 		state, game_features = process_buffers(game, params)
 		#reward_sum = 0
 
+		temp_start=True
 		while n_iter * params.frame_skip < params.eval_time * 35:
 			n_iter += 1
 
@@ -356,14 +357,16 @@ def evaluate_deathmatch_a3c(eval_model,game, params,num_iterations=None):
 							   params.player_rank)
 				game.respawn_player()
 
-			if cx == None and hx==None:
+			if temp_start:
 				cx = Variable(torch.zeros(1, 256), volatile=True)
 				hx = Variable(torch.zeros(1, 256), volatile=True)
 			else:
 				cx = Variable(cx.data, volatile=True)
 				hx = Variable(hx.data, volatile=True)
 
-			value, action_value, (hx, cx) = eval_model((Variable(state.unsqueeze(0), volatile=True), (hx, cx)))
+			temp_start = False
+
+			value, action_value, (hx, cx) = eval_model((Variable(torch.FloatTensor(state).unsqueeze(0),volatile=True), (hx, cx)))
 
 			prob = F.softmax(action_value)
 			action = prob.max(1)[1].data.numpy()

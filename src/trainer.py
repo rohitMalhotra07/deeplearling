@@ -29,6 +29,7 @@ class A3CTrainer(object):
 		self.n_iter = 0
 		self.eval_fn = eval_fn
 		self.evaluation_agent=evaluation_agent
+		self.best_score = -1000000
 
 	def ensure_shared_grads(self,model, shared_model):
 		for param, shared_param in zip(model.parameters(), shared_model.parameters()):
@@ -47,7 +48,7 @@ class A3CTrainer(object):
 		torch.save(model.state_dict(), model_path)
 
 
-	def evaluate_model(self, start_iter,model):
+	def evaluate_model(self,model,start_iter):
 		self.game.close()
 		# if we are using a recurrent network, we need to reset the history
 		new_score = self.eval_fn(model,self.game,self.params, self.n_iter)
@@ -59,6 +60,7 @@ class A3CTrainer(object):
 			model_path = os.path.join(self.params.dump_path, model_name)
 			logger.info('Best model dump: %s' % model_path)
 			torch.save(model.state_dict(), model_path)
+
 		model.train()
 		self.start_game()
 
