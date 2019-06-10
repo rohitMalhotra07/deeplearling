@@ -66,6 +66,8 @@ class A3CTrainer(object):
 	def start_game(self):
 		map_id = np.random.choice(self.params.map_ids_train)
 		logger.info("Training on map %i ..." % map_id)
+		logger.info("For agent %i ..." % self.rank)
+		print('Training For agent %i ...' % self.rank)
 		self.game.start(map_id=map_id,
 						episode_time=self.params.episode_time,
 						log_events=False,
@@ -82,7 +84,9 @@ class A3CTrainer(object):
 		self.start_game()
 		env = self.game.game #Doom object
 		torch.manual_seed(self.params2.seed + self.rank)
-		env.set_seed(self.params2.seed + self.rank)
+		temp_seed = self.params2.seed + self.rank
+		print('Seed',temp_seed,self.rank)
+		env.set_seed(temp_seed)
 
 		dump_frequency = self.params.dump_freq
 		start_iter = self.n_iter
@@ -185,6 +189,7 @@ class A3CTrainer(object):
 
 			# evaluation
 			if self.evaluation_agent:
+				print('Evaluation Agent rank', self.rank, (self.n_iter - last_eval_iter) % self.params.eval_freq)
 				if (self.n_iter - last_eval_iter) % self.params.eval_freq == 0:
 					model.load_state_dict(self.shared_model.state_dict())
 					self.evaluate_model(model,start_iter)
