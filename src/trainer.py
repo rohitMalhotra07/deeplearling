@@ -189,7 +189,7 @@ class A3CTrainer(object):
 
 			# evaluation
 			if self.evaluation_agent:
-				print('Evaluation Agent rank', self.rank, (self.n_iter - last_eval_iter) % self.params.eval_freq)
+				print('Evaluation Agent rank', self.rank, (self.n_iter - last_eval_iter) % self.params.eval_freq,self.n_iter)
 				if (self.n_iter - last_eval_iter) % self.params.eval_freq == 0:
 					model.load_state_dict(self.shared_model.state_dict())
 					self.evaluate_model(model,start_iter)
