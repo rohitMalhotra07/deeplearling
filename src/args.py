@@ -98,6 +98,9 @@ def parse_game_args(args):
     parser.add_argument("--is_a3c", type=int, default=0,
                         help="is training for a3c algo")
 
+    parser.add_argument("--is_a3c_test", type=int, default=0,
+                        help="is training for a3c algo")
+
     parser.add_argument("--num_agents_a3c", type=int, default=1,
                         help="Number of asynchronous agents")
 

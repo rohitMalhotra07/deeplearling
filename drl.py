@@ -6,7 +6,7 @@ from src.logger import get_logger
 from src.args import parse_game_args
 
 
-parser = argparse.ArgumentParser(description='Arnold runner')
+parser = argparse.ArgumentParser(description='DRL runner')
 parser.add_argument("--main_dump_path", type=str, default="./dumped",
                     help="Main dump path")
 parser.add_argument("--exp_name", type=str, default="default",

@@ -19,7 +19,7 @@ logger = getLogger()
 This will train A3C Algo
 '''
 class A3CTrainer(object):
-	def __init__(self,rank, params, params2,shared_model, optimizer,game,eval_fn):
+	def __init__(self,rank, params, params2,shared_model, optimizer,game,eval_fn,evaluation_agent=False):
 		self.rank = rank
 		self.params = params
 		self.params2 = params2
@@ -28,6 +28,7 @@ class A3CTrainer(object):
 		self.game = game
 		self.n_iter = 0
 		self.eval_fn = eval_fn
+		self.evaluation_agent=evaluation_agent
 
 	def ensure_shared_grads(self,model, shared_model):
 		for param, shared_param in zip(model.parameters(), shared_model.parameters()):
@@ -46,20 +47,20 @@ class A3CTrainer(object):
 		torch.save(model.state_dict(), model_path)
 
 
-	# def evaluate_model(self, start_iter,model):
-	# 	self.game.close()
-	# 	# if we are using a recurrent network, we need to reset the history
-	# 	new_score = self.eval_fn(self.game, self.network,
-	# 							 self.params, self.n_iter)
-	# 	if new_score > self.best_score:
-	# 		self.best_score = new_score
-	# 		logger.info('New best score: %f' % self.best_score)
-	# 		model_name = 'best-%i.pth' % (self.n_iter - start_iter)
-	# 		model_path = os.path.join(self.params.dump_path, model_name)
-	# 		logger.info('Best model dump: %s' % model_path)
-	# 		torch.save(self.network.module.state_dict(), model_path)
-	# 	self.network.module.train()
-	# 	self.start_game()
+	def evaluate_model(self, start_iter,model):
+		self.game.close()
+		# if we are using a recurrent network, we need to reset the history
+		new_score = self.eval_fn(model,self.game,self.params, self.n_iter)
+
+		if new_score > self.best_score:
+			self.best_score = new_score
+			logger.info(str(self.rank)+'New best score: %f' % self.best_score)
+			model_name = 'best-%i.pth' % (self.n_iter - start_iter)
+			model_path = os.path.join(self.params.dump_path, model_name)
+			logger.info('Best model dump: %s' % model_path)
+			torch.save(model.state_dict(), model_path)
+		model.train()
+		self.start_game()
 
 
 	def start_game(self):
@@ -85,7 +86,7 @@ class A3CTrainer(object):
 
 		dump_frequency = self.params.dump_freq
 		start_iter = self.n_iter
-		last_dump_iter = self.n_iter
+		last_eval_iter = self.n_iter
 
 		n_actions= self.game.action_builder.n_actions
 		# height = self.params.height
@@ -103,6 +104,7 @@ class A3CTrainer(object):
 		episode_length = 0  # initializing the length of an episode to 0
 
 		while True:  # repeat
+			self.n_iter += 1
 			episode_length += 1  # incrementing the episode length by one
 			model.load_state_dict(self.shared_model.state_dict())
 
@@ -180,6 +182,13 @@ class A3CTrainer(object):
 			# if (dump_frequency > 0 and (self.n_iter - last_dump_iter) % dump_frequency == 0):
 			# 	self.dump_model(model,start_iter)
 			# 	last_dump_iter = self.n_iter
+
+			# evaluation
+			if self.evaluation_agent:
+				if (self.n_iter - last_eval_iter) % self.params.eval_freq == 0:
+					model.load_state_dict(self.shared_model.state_dict())
+					self.evaluate_model(model,start_iter)
+					last_eval_iter = self.n_iter
 
 
 		self.game.close()

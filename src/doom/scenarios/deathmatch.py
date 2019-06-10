@@ -19,6 +19,10 @@ from ...model.aThreeCFinal.model import ActorCritic
 from ...model.aThreeCFinal.my_optim import SharedAdam
 import torch.multiprocessing as mp
 
+from ...doom.utils import process_buffers
+from torch.autograd import Variable
+import torch.nn.functional as F
+
 logger = getLogger()
 
 
@@ -127,7 +131,7 @@ def main(parser, args, parameter_server=None):
 			assert params.gpu_id == -1
 			parameter_server.register_model(network.module)
 
-		# Visualize only
+
 		if params.evaluate:
 			evaluate_deathmatch(game, network, params)
 		else:
@@ -142,22 +146,31 @@ def main(parser, args, parameter_server=None):
 		_a3c_flow(game,params)
 
 
+'''
+For a3c evaluation means testing
+'''
 
-def evaluate_deathmatch_a3c():
-	'''
-	Testing a3c
-	:return:
-	'''
-	pass
+def load_model_from_weights(model,params):
+	logger.info('Loading model from %s...' % params.reload)
+	model_path = os.path.join(params.dump_path, params.reload)
+	map_location = get_device_mapping(params.gpu_id)
+	reloaded = torch.load(model_path, map_location=map_location)
+	model.load_state_dict(reloaded)
 
+	return model
 
 def _a3c_flow(game,params):
-	if params.evaluate:
-		evaluate_deathmatch_a3c()
+	params2 = Params(params)
+	if params.is_a3c_test:
+		n_actions = game.action_builder.n_actions
+		num_inputs = 3
+		test_model = ActorCritic(num_inputs,n_actions,is_train=False)
+		test_model = load_model_from_weights(test_model,params)
+		new_score=evaluate_deathmatch_a3c(test_model,game,params,params2)
 		return
 
 	#######ELSE TRAINING #########
-	params2 = Params(params)
+	#params2 = Params(params)
 	torch.manual_seed(params2.seed)
 	n_actions = game.action_builder.n_actions
 	# height = params.height
@@ -166,6 +179,8 @@ def _a3c_flow(game,params):
 	#num_inputs=params.n_fm
 	num_inputs = 3
 	shared_model = ActorCritic(num_inputs, n_actions)
+	if params.reload:
+		load_model_from_weights(shared_model,params)
 	shared_model.share_memory()  # storing the model in the shared memory of the computer, which allows the threads to have access to this shared memory even if they are in different cores
 	optimizer = SharedAdam(shared_model.parameters(), lr=params2.lr)
 	optimizer.share_memory()
@@ -187,10 +202,10 @@ def _a3c_flow(game,params):
 			torch.save(sm.state_dict(), model_path)
 
 			n_iter+=1
-			s.enter(60, 1, save_model, (sm,n_iter))
+			s.enter(600, 1, save_model, (sm,n_iter))
 
 
-		s.enter(60, 1, save_model, (shared_m,1))
+		s.enter(600, 1, save_model, (shared_m,1))
 		s.run()
 
 	p = mp.Process(target=save_task, args=(shared_model,))
@@ -200,7 +215,7 @@ def _a3c_flow(game,params):
 
 	##########################################
 
-
+	flag = True
 	for rank in range(0,params2.num_processes):  # making a loop to run all the other processes that will be trained by updating the shared model
 		action_builder_temp = ActionBuilder(params)
 
@@ -228,7 +243,8 @@ def _a3c_flow(game,params):
 			use_scripted_marines=True
 		)
 
-		trainer_temp = A3CTrainer(rank, params, params2,shared_model, optimizer,game_temp,None)#right now None as eval function
+		trainer_temp = A3CTrainer(rank, params, params2,shared_model, optimizer,game_temp,evaluate_deathmatch_a3c,evaluation_agent=flag)#right now None as eval function
+		flag=False
 		p = mp.Process(target=trainer_temp.run)
 		p.start()
 		processes.append(p)
@@ -301,6 +317,71 @@ def evaluate_deathmatch(game, network, params, n_train_iter=None):
 	to_log = {k: game.statistics['all'][k] for k in to_log}
 	if n_train_iter is not None:
 		to_log['n_iter'] = n_train_iter
+	logger.info("__log__:%s" % json.dumps(to_log))
+
+	# evaluation score
+	return game.statistics['all']['frags']
+
+
+def evaluate_deathmatch_a3c(eval_model,game, params,num_iterations=None):
+	'''
+	Testing a3c
+	:return:
+	'''
+
+	eval_model.eval()
+
+	for map_id in params.map_ids_test:
+		logger.info("Evaluating on map %i ..." % map_id)
+		game.start(map_id=map_id, log_events=True,
+				   manual_control=(params.manual_control and not params.human_player))
+		game.randomize_textures(False)
+		game.init_bots_health(100)
+		cx = None
+		hx = None
+
+		n_iter = 0
+		state, game_features = process_buffers(game, params)
+		#reward_sum = 0
+
+		while n_iter * params.frame_skip < params.eval_time * 35:
+			n_iter += 1
+
+			if game.is_player_dead():
+				game.respawn_player()
+				#network.reset()
+
+			while game.is_player_dead():
+				logger.warning('Player %i is still dead after respawn.' %
+							   params.player_rank)
+				game.respawn_player()
+
+			if cx == None and hx==None:
+				cx = Variable(torch.zeros(1, 256), volatile=True)
+				hx = Variable(torch.zeros(1, 256), volatile=True)
+			else:
+				cx = Variable(cx.data, volatile=True)
+				hx = Variable(hx.data, volatile=True)
+
+			value, action_value, (hx, cx) = eval_model((Variable(state.unsqueeze(0), volatile=True), (hx, cx)))
+
+			prob = F.softmax(action_value)
+			action = prob.max(1)[1].data.numpy()
+
+			game.make_action(int(action), params.frame_skip)
+			state, game_features = process_buffers(game,params)
+
+
+
+		game.close()
+
+	# log the time and statistics
+	logger.info("%i iterations" % n_iter)
+	game.print_statistics()
+	to_log = ['kills', 'deaths', 'suicides', 'frags', 'k/d']
+	to_log = {k: game.statistics['all'][k] for k in to_log}
+	if num_iterations is not None:
+		to_log['n_iter'] = num_iterations
 	logger.info("__log__:%s" % json.dumps(to_log))
 
 	# evaluation score
