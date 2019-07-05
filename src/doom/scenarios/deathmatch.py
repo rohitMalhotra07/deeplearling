@@ -1,6 +1,18 @@
 import os
 import json
 import torch
+
+import torch._utils
+try:
+    torch._utils._rebuild_tensor_v2
+except AttributeError:
+    def _rebuild_tensor_v2(storage, storage_offset, size, stride, requires_grad, backward_hooks):
+        tensor = torch._utils._rebuild_tensor(storage, storage_offset, size, stride)
+        tensor.requires_grad = requires_grad
+        tensor._backward_hooks = backward_hooks
+        return tensor
+    torch._utils._rebuild_tensor_v2 = _rebuild_tensor_v2
+
 import pickle
 from logging import getLogger
 
@@ -119,7 +131,8 @@ def main(parser, args, parameter_server=None):
 		network = get_model_class(params.network_type)(params)
 		if params.reload:
 			logger.info('Reloading model from %s...' % params.reload)
-			model_path = os.path.join(params.dump_path, params.reload)
+			#model_path = os.path.join(params.dump_path, params.reload)
+			model_path = params.reload
 			map_location = get_device_mapping(params.gpu_id)
 			reloaded = torch.load(model_path, map_location=map_location)
 			network.module.load_state_dict(reloaded)
@@ -152,7 +165,8 @@ For a3c evaluation means testing
 
 def load_model_from_weights(model,params):
 	logger.info('Loading model from %s...' % params.reload)
-	model_path = os.path.join(params.dump_path, params.reload)
+	#model_path = os.path.join(params.dump_path, params.reload)
+	model_path = params.reload
 	map_location = get_device_mapping(params.gpu_id)
 	reloaded = torch.load(model_path, map_location=map_location)
 	model.load_state_dict(reloaded)
@@ -371,7 +385,8 @@ def evaluate_deathmatch_a3c(eval_model,game, params,num_iterations=None):
 			prob = F.softmax(action_value)
 			action = prob.max(1)[1].data.numpy()
 
-			game.make_action(int(action), params.frame_skip)
+			sleep = 0.01 if params.is_a3c_test else None
+			game.make_action(int(action), params.frame_skip,sleep=sleep)
 			state, game_features = process_buffers(game,params)
 
 
